@@ -19,24 +19,50 @@ class ContentCheckWorker(context: Context, params: WorkerParameters) :
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         return@withContext try {
-            val latestEntries = repository.fetchLatestEntries()
+            // Try fetching from the result.txt directly first
+            val resultTxtUrl = "https://raw.githubusercontent.com/yusdesign/lovepy/main/result.txt"
+            val latestEntries = fetchFromRawGithub(resultTxtUrl)
+            
+            if (latestEntries.isEmpty()) {
+                // Fallback to the HTML page
+                latestEntries = repository.fetchLatestEntries()
+            }
+            
             if (latestEntries.isNotEmpty()) {
-                val latestEntry = latestEntries.first() // Most recent
+                val latestEntry = latestEntries.first()
                 val lastNotifiedId = repository.getLastNotifiedId()
-
-                // Show notification ONLY if this is a new, unseen entry
+                
                 if (latestEntry.id != lastNotifiedId) {
-                    val title = "New Python Love Meter! ❤️"
-                    val message = "${latestEntry.status} (${latestEntry.chance}%)"
-                    notificationHelper.showNotification(latestEntry.id.hashCode(), title, message)
-
-                    // Save that we've notified for this entry
+                    // Show notification
+                    notificationHelper.showNotification(
+                        notificationId = latestEntry.id.hashCode(),
+                        title = "New Love Meter Result!",
+                        message = "${latestEntry.status} (${latestEntry.chance}%)"
+                    )
+                    
                     repository.setLastNotifiedId(latestEntry.id)
                 }
             }
+            
             Result.success()
         } catch (e: Exception) {
-            Result.retry() // Try again later if network fails
+            Result.retry()
+        }
+    }
+    
+    private suspend fun fetchFromRawGithub(url: String): List<LoveMeter> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = Jsoup.connect(url)
+                    .ignoreContentType(true)
+                    .timeout(10000)
+                    .execute()
+                    .body()
+                
+                parseResultTxt(response)
+            } catch (e: Exception) {
+                emptyList()
+            }
         }
     }
 
