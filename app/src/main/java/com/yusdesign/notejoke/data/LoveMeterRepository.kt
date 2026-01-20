@@ -37,7 +37,7 @@ class LoveMeterRepository(private val context: Context) {
     private fun parseResultTxt(content: String): List<LoveMeter> {
         val entries = mutableListOf<LoveMeter>()
         val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.UK)
-    
+        
         // Parse result.txt format (one entry per line)
         content.lines().forEach { line ->
             if (line.isNotBlank()) {
@@ -45,11 +45,11 @@ class LoveMeterRepository(private val context: Context) {
                     // Format: "21/01/2026 01:42 💖 Love update: LIKE (42.2%) (1091810)"
                     val pattern = """(\d{2}/\d{2}/\d{4} \d{2}:\d{2})\s*💖 Love update:\s*(\w+)\s*\((\d+\.?\d*)%\)\s*\(([a-f0-9]+)\)"""
                     val regex = Regex(pattern)
-                
+                    
                     regex.find(line)?.let { match ->
                         val (dateStr, status, chanceStr, hash) = match.destructured
                         val date = dateFormat.parse(dateStr)
-                    
+                        
                         entries.add(LoveMeter(
                             id = hash,
                             status = status,
@@ -65,7 +65,6 @@ class LoveMeterRepository(private val context: Context) {
         }
         return entries
     }
-
     
     private fun parseHtmlContent(html: String, dateFormat: SimpleDateFormat): List<LoveMeter> {
         val entries = mutableListOf<LoveMeter>()
